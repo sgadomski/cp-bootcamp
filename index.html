@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Bootcamp — Jeopardy, Who Wants to Be a CP, Flashcards</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#171e2e; --panel2:#1f283b; --ink:#f3f1ea; --muted:#9aa3b5; --line:#2b3550;
+    --gold:#f3c969; --blue:#1d3fa8; --blue2:#2a55d6; --cell:#1b3a9e; --cellHover:#2650c7; --used:#111a33;
+    --green:#2fbf71; --red:#e2554f; --orange:#f0963c; --purple:#5b3fb8; --purple2:#7a5ce0;
+    --fs:17px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs)/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+  body.big{--fs:22px}
+  body.huge{--fs:28px}
+  a{color:var(--gold)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+  header .brand{font-weight:700;letter-spacing:.02em;cursor:pointer}
+  header .brand small{color:var(--muted);font-weight:400;margin-left:8px}
+  header .right{display:flex;gap:8px;align-items:center}
+  main{max-width:1200px;margin:0 auto;padding:16px}
+  button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;line-height:1.3}
+  button:hover{filter:brightness(1.12)}
+  button:active{transform:scale(.98)}
+  button.primary{background:var(--blue2);border-color:var(--blue2)}
+  button.gold{background:var(--gold);color:#2a1d00;border-color:var(--gold);font-weight:700}
+  button.ghost{background:transparent}
+  button.small{padding:6px 10px;font-size:.85em}
+  button.good{background:var(--green);border-color:var(--green);color:#06301a;font-weight:700}
+  button.bad{background:var(--red);border-color:var(--red);color:#3a0806;font-weight:700}
+  button:disabled{opacity:.4;cursor:default;filter:none}
+  input[type=text],input[type=number],select{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  h1,h2,h3{margin:.2em 0 .5em;font-weight:700}
+  h1{font-size:1.6em} h2{font-size:1.25em} h3{font-size:1.05em}
+  .muted{color:var(--muted)}
+  .pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.8em;margin:2px 4px 2px 0;cursor:pointer;user-select:none}
+  .pill.on{background:var(--blue2);border-color:var(--blue2)}
+  .pill.core{border-color:var(--green)} .pill.depth{border-color:var(--orange)}
+  .home .choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .home .game{padding:22px;border-radius:16px;border:1px solid var(--line);background:var(--panel)}
+  .home .game h2{margin-top:0}
+  .home .game .modes{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .jtitle{color:var(--gold)} .mtitle{color:var(--purple2)}
+
+  /* Jeopardy board */
+  .board{display:grid;gap:6px;grid-template-columns:repeat(6,1fr)}
+  .cat{background:var(--blue);border-radius:8px;padding:10px 6px;text-align:center;font-weight:700;font-size:.85em;min-height:64px;display:flex;align-items:center;justify-content:center;line-height:1.2;text-transform:uppercase;letter-spacing:.02em}
+  .cell{background:var(--cell);border-radius:8px;min-height:64px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.5em;color:var(--gold);cursor:pointer;border:none;width:100%;padding:0}
+  .cell:hover{background:var(--cellHover)}
+  .cell.used{background:var(--used);color:transparent;cursor:default}
+  .cell.core{box-shadow:inset 0 -3px 0 rgba(47,191,113,.55)}
+  .cell.depth{box-shadow:inset 0 -3px 0 rgba(240,150,60,.6)}
+  .legend{font-size:.8em;color:var(--muted);margin:8px 0}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin:0 4px 0 10px}
+  @media (max-width:720px){
+    .board{display:block}
+    .board .col{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+    .board .col .cat{flex:0 0 32%;min-height:48px;font-size:.7em;text-transform:none;padding:6px 4px}
+    .board .col .cell{min-height:48px;font-size:.82em;flex:1;min-width:0;padding:0 2px}
+  }
+  .scores{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .score{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:150px;flex:1}
+  .score .name{font-size:.85em;color:var(--muted);display:flex;justify-content:space-between;gap:6px;align-items:center}
+  .score .val{font-size:1.5em;font-weight:800;color:var(--gold);cursor:pointer}
+  .score .val.neg{color:var(--red)}
+  .score.active{border-color:var(--gold)}
+  .clue{background:var(--blue);border-radius:16px;padding:28px 24px;min-height:260px;display:flex;flex-direction:column;justify-content:center;text-align:center}
+  .clue .text{font-size:1.7em;line-height:1.35;font-weight:600}
+  .clue .text .blank{border-bottom:3px solid var(--gold);padding:0 .3em;color:var(--gold)}
+  .clue .meta{font-size:.8em;color:#c9d2ff;margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em}
+  .clue .ans{margin-top:22px;font-size:1.5em;color:var(--gold);font-weight:700;border-top:1px dashed rgba(255,255,255,.3);padding-top:16px;text-align:left}
+  .clue .ans .xh{font-size:1em}
+  .ctrl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  .ctrl .spacer{flex:1}
+  .judge{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px}
+  .judge .p{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .judge .p .nm{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .judge .p button{padding:6px 12px}
+  .timerbar{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:10px}
+  .timerbar i{display:block;height:100%;background:var(--gold);width:100%;transition:width 1s linear}
+  .dd{background:var(--gold);color:#2a1d00;font-weight:900;font-size:2em;text-align:center;border-radius:16px;padding:30px;letter-spacing:.05em}
+  .hint{font-size:.8em;color:var(--muted)}
+  kbd{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:.85em}
+
+  /* reference card */
+  .ref{background:#fbfaf6;color:#1f2430;border-radius:10px;padding:10px 12px;font-size:.78em;line-height:1.35;margin-top:14px;text-align:left}
+  .ref .xh{font-weight:700;color:#1e3a5f;border-bottom:2px solid #1e3a5f;margin-bottom:6px;padding-bottom:3px}
+  .ref .xt{width:100%;border-collapse:collapse;margin:6px 0}
+  .ref .xt th{text-align:left;background:#eaf0f7;color:#1e3a5f;padding:4px 6px;border-bottom:1px solid #1e3a5f}
+  .ref .xt td{padding:4px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+  .ref .xc{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+  .ref .xk{flex:1 1 140px;background:#eef2f8;border-radius:8px;overflow:hidden;min-width:0}
+  .ref .xkh{background:#1e3a5f;color:#fff;font-weight:700;padding:4px 8px}
+  .ref .xr{padding:3px 8px;border-top:1px solid #d9dfe8}
+  .ref .xp{padding:2px 0}
+  .ref .xa{text-align:center;color:#1e3a5f;font-weight:700}
+  .ref .blank{border-bottom:2px solid #1e3a5f}
+
+  /* Millionaire */
+  .mwrap{max-width:900px;margin:0 auto}
+  .ladder{display:flex;flex-direction:column-reverse;gap:3px;font-size:.8em}
+  .ladder div{display:flex;justify-content:space-between;padding:3px 10px;border-radius:6px;background:var(--panel)}
+  .ladder div.cur{background:var(--orange);color:#2a1300;font-weight:800}
+  .ladder div.done{color:var(--muted)}
+  .ladder div.ms{color:var(--gold);font-weight:700}
+  .ladder div.ms.cur{color:#2a1300}
+  .mq{background:linear-gradient(180deg,#1c1740,#0f0d24);border:2px solid var(--purple2);border-radius:999px;padding:22px 34px;text-align:center;font-size:1.35em;font-weight:600;line-height:1.35;margin:10px 0 14px}
+  .mq .blank{border-bottom:3px solid var(--gold);padding:0 .3em;color:var(--gold)}
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+  .opt{background:linear-gradient(180deg,#1c1740,#0f0d24);border:2px solid var(--purple2);border-radius:999px;padding:12px 18px;text-align:left;font-size:1.05em;display:flex;gap:10px;align-items:center}
+  .opt b{color:var(--gold);min-width:1.4em}
+  .opt.locked{background:var(--orange);color:#2a1300;border-color:var(--orange)}
+  .opt.locked b{color:#2a1300}
+  .opt.right{background:var(--green);color:#06301a;border-color:var(--green)}
+  .opt.right b{color:#06301a}
+  .opt.wrong{background:var(--red);color:#3a0806;border-color:var(--red)}
+  .opt.gone{opacity:.18}
+  .lifelines{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .lifelines button{border-radius:999px;border-color:var(--purple2)}
+  .lifelines button.used{text-decoration:line-through;opacity:.4}
+  .mtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .mtop .who{font-weight:700;font-size:1.1em}
+  .mtop .amt{color:var(--gold);font-weight:800}
+  .poll{display:flex;gap:14px;align-items:flex-end;height:120px;margin:10px 0}
+  .poll div{flex:1;background:var(--purple2);border-radius:6px 6px 0 0;position:relative;text-align:center}
+  .poll div span{position:absolute;top:-22px;left:0;right:0;font-size:.85em}
+  .poll div i{position:absolute;bottom:-22px;left:0;right:0;font-style:normal;color:var(--gold);font-weight:700}
+  .winners{display:flex;gap:10px;flex-wrap:wrap}
+  .winners .w{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:160px}
+  .modlist{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel2)}
+  .modlist .dom{font-weight:700;margin:8px 0 4px;color:var(--gold);font-size:.85em;text-transform:uppercase;letter-spacing:.04em}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--gold);color:#2a1d00;padding:10px 16px;border-radius:10px;font-weight:700;z-index:9;display:none}
+  .catlist{display:flex;flex-wrap:wrap;gap:6px}
+  .catlist .pill{font-size:.85em;padding:6px 12px}
+  .sr{position:absolute;left:-9999px}
+  /* Flashcards */
+  .fc{max-width:720px;margin:0 auto}
+  .fcbar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85em;color:var(--muted);margin-bottom:10px;flex-wrap:wrap}
+  .fcbar b{color:var(--ink)}
+  .fccard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 22px;min-height:300px;display:flex;flex-direction:column;justify-content:center;cursor:pointer;user-select:none}
+  .fccard .front{font-size:1.35em;line-height:1.45;font-weight:600;text-align:center}
+  .fccard .front .blank{border-bottom:3px solid var(--gold);padding:0 .3em;color:var(--gold)}
+  .fccard .front .blank.filled{border-bottom:none;color:var(--gold)}
+  .fccard .back{margin-top:18px;border-top:1px dashed var(--line);padding-top:14px}
+  .fccard .back .a{font-size:1.25em;color:var(--gold);font-weight:700}
+  .fccard .tap{color:var(--muted);font-size:.85em;text-align:center;margin-top:18px}
+  .fccard .src{font-size:.78em;color:var(--muted);text-align:center;margin-bottom:12px}
+  .grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+  .grades button{padding:12px 6px;text-align:center;font-weight:700;border-width:2px}
+  .grades button small{display:block;font-weight:400;font-size:.75em;color:var(--muted);margin-top:2px}
+  .grades .g1{border-color:var(--red)} .grades .g2{border-color:var(--orange)} .grades .g3{border-color:var(--green)} .grades .g4{border-color:var(--blue2)}
+  .grades2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .grades2 button{padding:14px;text-align:center;font-weight:700}
+  .bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:6px 0 2px}
+  .bar i{display:block;height:100%;background:var(--green)}
+  .stat{display:flex;gap:10px;flex-wrap:wrap}
+  .stat div{background:var(--panel2);border-radius:10px;padding:8px 12px;min-width:90px;text-align:center}
+  .stat div b{display:block;font-size:1.3em;color:var(--gold)}
+  .stat div span{font-size:.75em;color:var(--muted)}
+  .fctitle{color:var(--green)}
+  footer{color:var(--muted);font-size:.75em;text-align:center;padding:30px 10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand" onclick="go('')">CP Bootcamp <small id="crumb"></small></div>
+  <div class="right">
+    <button class="ghost small" onclick="fontCycle()" title="Text size for the projector">A<span style="font-size:.7em">A</span></button>
+    <button class="ghost small" onclick="go('')">Home</button>
+  </div>
+</header>
+<main id="app"></main>
+<div class="toast" id="toast"></div>
+<footer>Questions are cut from the CP Boot Camp Anki deck (Core and Depth tiers, all modules). Hosts can skip or flag any question; flagged IDs stay on this device and can be copied out from the home screen.</footer>
+
+<script src="data/index.js"></script>
+<script>
+/* ============ shared ============ */
+var DOMS = (window.CPINDEX && CPINDEX.domains) || [];
+var MODS = {}; DOMS.forEach(function(d){ d.modules.forEach(function(m){ MODS[d.name+'|'+m.code] = Object.assign({dom:d.name}, m); }); });
+var app = document.getElementById('app');
+var store = {
+  get:function(k,dflt){ try{ var v=localStorage.getItem('cpgn.'+k); return v==null?dflt:JSON.parse(v);}catch(e){return dflt;} },
+  set:function(k,v){ try{ localStorage.setItem('cpgn.'+k, JSON.stringify(v)); }catch(e){} }
+};
+var used = new Set(store.get('used', []));
+var flagged = store.get('flagged', []);
+function persistUsed(){ store.set('used', Array.from(used).slice(-6000)); }
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(function(){ t.style.display='none'; },1800); }
+function fontCycle(){ var b=document.body; if(b.classList.contains('huge')){ b.classList.remove('huge','big'); } else if(b.classList.contains('big')){ b.classList.remove('big'); b.classList.add('huge'); } else { b.classList.add('big'); } store.set('font', b.className); }
+document.body.className = store.get('font','');
+function money(n){ return (n<0?'−':'') + '$' + Math.abs(n).toLocaleString(); }
+function plain(s){ return String(s).replace(/<[^>]+>/g,''); }
+
+var loaded = {};
+function loadDomains(names){
+  var need = names.filter(function(n){ return !loaded[n]; });
+  if(!need.length) return Promise.resolve();
+  return Promise.all(need.map(function(n){
+    var d = DOMS.filter(function(x){ return x.name===n; })[0];
+    return new Promise(function(res, rej){
+      var s=document.createElement('script'); s.src=d.file; s.onload=function(){ loaded[n]=true; res(); }; s.onerror=function(){ rej(new Error('Could not load '+d.file)); }; document.head.appendChild(s);
+    });
+  }));
+}
+function bank(dom){ return (window.CPBANK && CPBANK[dom]) || []; }
+function pool(modKeys, tier, opts){
+  opts = opts||{};
+  var out=[];
+  modKeys.forEach(function(k){
+    var parts=k.split('|'); var dom=parts[0], code=parts[1];
+    bank(dom).forEach(function(q){
+      if(q.mod!==code) return;
+      if(tier && q.tier!==tier) return;
+      if(opts.mc && !q.mc) return;
+      if(opts.kind && q.kind!==opts.kind) return;
+      out.push(q);
+    });
+  });
+  return out;
+}
+function pick(modKeys, tier, n, opts){
+  var all = pool(modKeys, tier, opts);
+  var fresh = all.filter(function(q){ return !used.has(q.id); });
+  if(fresh.length < n){ all.forEach(function(q){ used.delete(q.id); }); fresh = all.slice(); }
+  shuffle(fresh);
+  var out = fresh.slice(0, n);
+  out.forEach(function(q){ used.add(q.id); });
+  persistUsed();
+  return out;
+}
+function modLabel(k){ var m=MODS[k]; if(!m) return k; return (/^[A-Z]{1,2}\d/.test(m.code)||/^(HP|HN|HT|HD|MP)\d/.test(m.code)) ? m.code+' '+m.name : m.name; }
+function flagQ(q){ if(flagged.indexOf(q.id)<0){ flagged.push(q.id); store.set('flagged', flagged); } toast('Flagged for review'); }
+function refHtml(q){ var x = q.kind==='basic' ? '' : q.extra; return x ? '<div class="ref">'+x+'</div>' : ''; }
+function sourceLine(q){ return '<span class="muted">'+esc(q.dom)+' · '+esc(modLabel(q.dom+'|'+q.mod))+' · '+(q.tier==='core'?'Core':'Depth')+'</span>'; }
+
+/* ============ routing ============ */
+var VIEW = {};
+function go(hash){ if(location.hash !== '#'+hash){ location.hash = hash; } else { route(); } }
+function route(){
+  var h=(location.hash||'').replace('#','');
+  document.getElementById('crumb').textContent = h.indexOf('jeopardy')===0 ? '· Jeopardy' : h.indexOf('cp')===0 ? '· Who Wants to Be a CP' : h==='cards' ? '· Flashcards' : '';
+  if(h==='jeopardy-live') return jSetup('live');
+  if(h==='jeopardy-solo') return jSetup('solo');
+  if(h==='cp-live') return mSetup('live');
+  if(h==='cp-solo') return mSetup('solo');
+  if(h==='cards') return fcSetup();
+  home();
+}
+window.addEventListener('hashchange', route);
+
+function dataMissing(){
+  if(DOMS.length) return false;
+  app.innerHTML='<div class="card" style="border-color:var(--red)"><h2 style="color:var(--red)">Question bank not found</h2>'+
+  '<p>This page loads its questions from a <code>data</code> folder that must sit beside <code>index.html</code>.</p>'+
+  '<p><b>If you opened this from the downloaded zip:</b> extract the whole zip first (right-click → Extract All on Windows, double-click on a Mac), then open <code>index.html</code> from the extracted <code>cp-game-night</code> folder. Opening it from inside the zip extracts only this one file.</p>'+
+  '<p><b>If you downloaded only index.html:</b> use the full zip instead; the page is nothing without its data files.</p>'+
+  '<p><b>If you are on the published link:</b> reload once; if this message stays, tell the person who built it.</p></div>';
+  return true;
+}
+function home(){
+  VIEW = {name:'home'};
+  if(dataMissing()) return;
+  var total = DOMS.reduce(function(a,d){ return a+d.core+d.depth; },0);
+  app.innerHTML =
+  '<div class="home">'+
+  '<p class="muted">'+DOMS.length+' domains · '+Object.keys(MODS).length+' modules · '+total.toLocaleString()+' questions. Core concepts sit in the cheaper boxes and the early ladder; Depth in the expensive boxes and the late ladder.</p>'+
+  '<div class="choice">'+
+    '<div class="game"><h2 class="jtitle">CP Jeopardy</h2><p>Six categories, five clues each. $200–$600 are Core, $800–$1,000 are Depth. Daily Doubles, Double Jeopardy, Final Jeopardy.</p>'+
+      '<div class="modes"><button class="primary" onclick="go(\'jeopardy-live\')">Live: projector + host</button><button onclick="go(\'jeopardy-solo\')">Solo: play on your phone</button></div></div>'+
+    '<div class="game"><h2 class="fctitle">CP Flashcards</h2><p>The whole deck, free, on your phone. Spaced repetition like Anki (Again / Hard / Good / Easy), or cram a module before a rotation. Progress stays on your device; copy it between devices in one tap.</p>'+
+      '<div class="modes"><button class="primary" onclick="go(\'cards\')">Study</button></div></div>'+
+    '<div class="game"><h2 class="mtitle">Who Wants to Be a CP</h2><p>Fifteen questions up the ladder. Questions 1–8 are Core, 9–15 are Depth. Three lifelines: 50:50, Phone the attending, Ask the audience.</p>'+
+      '<div class="modes"><button class="primary" onclick="go(\'cp-live\')">Live: projector + host</button><button onclick="go(\'cp-solo\')">Solo: play on your phone</button></div></div>'+
+  '</div>'+
+  '<div class="card" style="margin-top:16px"><h3>Housekeeping</h3><div class="row">'+
+    '<button class="small" onclick="resetUsed()">Reset used-question memory ('+used.size+')</button>'+
+    '<button class="small" onclick="copyFlags()">Copy flagged question IDs ('+flagged.length+')</button>'+
+    '<button class="small" onclick="flagged=[];store.set(\'flagged\',[]);home()">Clear flags</button>'+
+  '</div><p class="hint">Used questions are remembered on this device so boards do not repeat across sessions. Flag a question from any answer screen if it needs editing in the bank.</p></div>'+
+  '</div>';
+}
+function resetUsed(){ used=new Set(); persistUsed(); toast('Used-question memory cleared'); home(); }
+function copyFlags(){ var t=flagged.join('\n'); try{ navigator.clipboard.writeText(t).then(function(){ toast('Copied '+flagged.length+' IDs'); }, function(){ prompt_ids(t); }); }catch(e){ prompt_ids(t); } }
+function prompt_ids(t){ app.insertAdjacentHTML('afterbegin','<div class="card"><b>Flagged IDs</b><br><textarea style="width:100%;height:120px">'+esc(t)+'</textarea></div>'); }
+
+/* ============ module picker (shared) ============ */
+function pickerHtml(id, selected, max){
+  var h='<div class="row" style="margin-bottom:8px">';
+  DOMS.forEach(function(d){ h+='<span class="pill" onclick="pickerDomain(\''+id+'\',\''+esc(d.name)+'\','+max+')">'+esc(d.name)+'</span>'; });
+  h+='<span class="pill" onclick="pickerRandom(\''+id+'\','+max+')">Random mix</span><span class="pill" onclick="pickerClear(\''+id+'\')">Clear</span></div>';
+  h+='<div class="modlist" id="'+id+'">';
+  DOMS.forEach(function(d){
+    h+='<div class="dom">'+esc(d.name)+' <span class="muted" style="font-weight:400;text-transform:none">'+d.core+' core · '+d.depth+' depth</span></div>';
+    d.modules.forEach(function(m){ var k=d.name+'|'+m.code; h+='<span class="pill'+(selected.indexOf(k)>=0?' on':'')+'" data-k="'+esc(k)+'" onclick="pickerToggle(this,\''+id+'\','+max+')">'+esc(modLabel(k))+' <span class="muted">'+m.core+'/'+m.depth+'</span></span>'; });
+  });
+  h+='</div><div class="hint" id="'+id+'-count"></div>';
+  return h;
+}
+function pickerSelected(id){ return Array.prototype.map.call(document.querySelectorAll('#'+id+' .pill.on'), function(p){ return p.getAttribute('data-k'); }); }
+function pickerCount(id,max){ var n=pickerSelected(id).length; var c=document.getElementById(id+'-count'); if(c) c.textContent = n+' selected'+(max?' (up to '+max+')':''); }
+function pickerToggle(el,id,max){ if(!el.classList.contains('on') && max && pickerSelected(id).length>=max){ toast('Already '+max+' selected'); return; } el.classList.toggle('on'); pickerCount(id,max); }
+function pickerClear(id){ document.querySelectorAll('#'+id+' .pill.on').forEach(function(p){ p.classList.remove('on'); }); pickerCount(id); }
+function pickerDomain(id,dom,max){ pickerClear(id); var pills=Array.prototype.filter.call(document.querySelectorAll('#'+id+' .pill'), function(p){ return (p.getAttribute('data-k')||'').indexOf(dom+'|')===0; }); if(max && pills.length>max) pills=shuffle(pills).slice(0,max); pills.forEach(function(p){ p.classList.add('on'); }); pickerCount(id,max); }
+function pickerRandom(id,max){ pickerClear(id); var pills=Array.prototype.slice.call(document.querySelectorAll('#'+id+' .pill[data-k]')); shuffle(pills).slice(0,max||6).forEach(function(p){ p.classList.add('on'); }); pickerCount(id,max); }
+function domainsOf(keys){ var s={}; keys.forEach(function(k){ s[k.split('|')[0]]=1; }); return Object.keys(s); }
+
+/* ============ JEOPARDY ============ */
+var J = null;
+var JVALUES = [200,400,600,800,1000];
+function jSetup(mode){
+  VIEW={name:'jsetup'};
+  if(dataMissing()) return;
+  var saved = store.get('jsetup', {players:['Team 1','Team 2','Team 3'], coreRows:3, timer:0, cats:[]});
+  if(mode==='solo'){ saved.players=[saved.players[0]||'Me']; }
+  var h='<div class="card"><h1 class="jtitle">CP Jeopardy — '+(mode==='live'?'live':'solo')+'</h1>';
+  if(mode==='live'){
+    h+='<h3>Players or teams</h3><div class="row" id="jplayers">';
+    saved.players.forEach(function(p,i){ h+='<input type="text" value="'+esc(p)+'" style="width:160px" placeholder="Name '+(i+1)+'">'; });
+    h+='</div><div class="row" style="margin-top:6px"><button class="small" onclick="jAddPlayer()">+ Add</button><button class="small" onclick="jRemovePlayer()">− Remove</button></div>';
+  }
+  h+='<h3 style="margin-top:16px">Categories (pick 6 modules, or a domain, or random)</h3>'+pickerHtml('jpick', saved.cats, 6);
+  h+='<h3 style="margin-top:16px">Rules</h3><div class="row">'+
+     '<label>Core rows <select id="jcore"><option value="3"'+(saved.coreRows==3?' selected':'')+'>$200–$600 Core, $800–$1,000 Depth</option><option value="2"'+(saved.coreRows==2?' selected':'')+'>$200–$400 Core, $600–$1,000 Depth</option><option value="5"'+(saved.coreRows==5?' selected':'')+'>All Core</option><option value="0"'+(saved.coreRows==0?' selected':'')+'>All Depth</option></select></label>'+
+     '<label>Clue timer <select id="jtimer"><option value="0"'+(saved.timer==0?' selected':'')+'>Off</option><option value="20"'+(saved.timer==20?' selected':'')+'>20 s</option><option value="30"'+(saved.timer==30?' selected':'')+'>30 s</option><option value="45"'+(saved.timer==45?' selected':'')+'>45 s</option></select></label>'+
+     '</div>'+
+     '<div class="row" style="margin-top:16px"><button class="gold" onclick="jStart(\''+mode+'\')">Build the board</button><span class="hint">Live controls: <kbd>Space</kbd> reveal · <kbd>1</kbd>–<kbd>8</kbd> correct for player n · <kbd>Shift</kbd>+<kbd>n</kbd> wrong · <kbd>Esc</kbd> back to board</span></div>';
+  h+='</div>';
+  app.innerHTML=h; pickerCount('jpick',6);
+  if(!saved.cats.length) pickerRandom('jpick',6);
+}
+function jAddPlayer(){ var w=document.getElementById('jplayers'); if(w.children.length>=8) return; var i=document.createElement('input'); i.type='text'; i.style.width='160px'; i.placeholder='Name '+(w.children.length+1); i.value='Team '+(w.children.length+1); w.appendChild(i); }
+function jRemovePlayer(){ var w=document.getElementById('jplayers'); if(w.children.length>1) w.removeChild(w.lastChild); }
+function jStart(mode){
+  var cats = pickerSelected('jpick');
+  if(cats.length!==6){ toast('Pick exactly 6 categories'); return; }
+  var players = mode==='live' ? Array.prototype.map.call(document.querySelectorAll('#jplayers input'), function(i){ return i.value.trim()||'Player'; }) : ['Me'];
+  var coreRows = parseInt(document.getElementById('jcore').value,10);
+  var timer = parseInt(document.getElementById('jtimer').value,10);
+  store.set('jsetup', {players:players, coreRows:coreRows, timer:timer, cats:cats});
+  app.innerHTML='<div class="card">Loading question bank for '+esc(domainsOf(cats).join(', '))+'…</div>';
+  loadDomains(domainsOf(cats)).then(function(){
+    J = {mode:mode, players:players.map(function(n){ return {name:n, score:0}; }), cats:cats, coreRows:coreRows, timer:timer, round:1, final:null};
+    jBuildRound();
+    jBoard();
+  }).catch(function(e){ app.innerHTML='<div class="card">'+esc(e.message)+'</div>'; });
+}
+function jBuildRound(){
+  var mult = J.round===2 ? 2 : 1;
+  J.cells = J.cats.map(function(k){
+    var nCore = J.coreRows, nDepth = 5-J.coreRows;
+    var core = pick([k],'core',nCore), depth = pick([k],'depth',nDepth);
+    if(core.length<nCore){ depth = depth.concat(pick([k],'depth',nCore-core.length)); }
+    if(depth.length<nDepth){ core = core.concat(pick([k],'core',nDepth-depth.length)); }
+    var qs = core.concat(depth).slice(0,5);
+    return qs.map(function(q,i){ return {q:q, value:JVALUES[i]*mult, used:false, dd:false}; });
+  });
+  var ddn = J.round===2 ? 2 : 1, placed=0, tries=0;
+  while(placed<ddn && tries<100){ tries++; var c=Math.floor(Math.random()*6), r=1+Math.floor(Math.random()*4); if(!J.cells[c][r].dd){ J.cells[c][r].dd=true; placed++; } }
+}
+function jBoard(){
+  VIEW={name:'jboard'};
+  var narrow = window.innerWidth<=720;
+  var h='<div class="row" style="justify-content:space-between"><h2 class="jtitle" style="margin:0">'+(J.round===1?'Jeopardy':'Double Jeopardy')+'</h2><div class="row">'+
+    (J.round===1?'<button class="small" onclick="jNextRound()">Double Jeopardy →</button>':'<button class="small" onclick="jFinalSetup()">Final Jeopardy →</button>')+
+    '<button class="small ghost" onclick="jSetup(J.mode)">New game</button></div></div>';
+  h+='<div class="legend">Row colour: <i style="background:rgba(47,191,113,.8)"></i>Core <i style="background:rgba(240,150,60,.8)"></i>Depth</div>';
+  h+='<div class="board">';
+  if(narrow){
+    J.cats.forEach(function(k,c){ h+='<div class="col"><div class="cat">'+esc(modLabel(k))+'</div>'; J.cells[c].forEach(function(cell,r){ h+='<button class="cell '+cell.q.tier+(cell.used?' used':'')+'" onclick="jOpen('+c+','+r+')">'+(cell.used?'':'$'+cell.value)+'</button>'; }); h+='</div>'; });
+  } else {
+    J.cats.forEach(function(k){ h+='<div class="cat">'+esc(modLabel(k))+'</div>'; });
+    for(var r=0;r<5;r++){ for(var c=0;c<6;c++){ var cell=J.cells[c][r]; h+='<button class="cell '+cell.q.tier+(cell.used?' used':'')+'" onclick="jOpen('+c+','+r+')">'+(cell.used?'':'$'+cell.value)+'</button>'; } }
+  }
+  h+='</div>';
+  h+=jScoresHtml();
+  app.innerHTML=h;
+}
+function jScoresHtml(activeIdx){
+  var h='<div class="scores">';
+  J.players.forEach(function(p,i){ h+='<div class="score'+(i===activeIdx?' active':'')+'"><div class="name"><span>'+esc(p.name)+'</span>'+(J.mode==='live'?'<button class="small ghost" onclick="jEditScore('+i+')" title="Edit score">✎</button>':'')+'</div><div class="val'+(p.score<0?' neg':'')+'">'+money(p.score)+'</div></div>'; });
+  return h+'</div>';
+}
+function jEditScore(i){ var v=prompt('Score for '+J.players[i].name, J.players[i].score); if(v!==null && !isNaN(parseInt(v,10))){ J.players[i].score=parseInt(v,10); jBoard(); } }
+var jTimerH=null;
+function jStopTimer(){ if(jTimerH){ clearInterval(jTimerH); jTimerH=null; } }
+function jOpen(c,r){
+  var cell=J.cells[c][r]; if(cell.used) return;
+  J.cur={c:c,r:r,cell:cell,revealed:false,wager:null,who:null};
+  if(cell.dd && !cell.ddDone){ return jDailyDouble(); }
+  jClue();
+}
+function jDailyDouble(){
+  VIEW={name:'jdd'};
+  var cell=J.cur.cell;
+  var h='<div class="dd">DAILY DOUBLE</div><div class="card" style="margin-top:14px">';
+  if(J.mode==='live'){
+    h+='<div class="row"><label>Who found it? <select id="ddwho">'+J.players.map(function(p,i){ return '<option value="'+i+'">'+esc(p.name)+'</option>'; }).join('')+'</select></label>';
+  } else { h+='<div class="row">'; }
+  var maxW = Math.max.apply(null, J.players.map(function(p){ return p.score; }).concat([J.round===2?2000:1000]));
+  h+='<label>Wager <input type="number" id="ddwager" value="'+cell.value+'" min="5" max="'+maxW+'" style="width:140px"></label><span class="hint">Max '+money(maxW)+' (your score or the top value, whichever is higher)</span></div>';
+  h+='<div class="row" style="margin-top:12px"><button class="gold" onclick="jDDGo()">Show the clue</button><button class="ghost" onclick="jBoard()">Back</button></div></div>';
+  app.innerHTML=h;
+}
+function jDDGo(){
+  var w=parseInt(document.getElementById('ddwager').value,10); if(isNaN(w)||w<0){ toast('Enter a wager'); return; }
+  J.cur.wager=w; J.cur.who = J.mode==='live' ? parseInt(document.getElementById('ddwho').value,10) : 0; J.cur.cell.ddDone=true;
+  jClue();
+}
+function jClue(){
+  VIEW={name:'jclue'};
+  var cur=J.cur, q=cur.cell.q, val = cur.wager!=null ? cur.wager : cur.cell.value;
+  var h='<div class="clue"><div class="meta">'+esc(modLabel(J.cats[cur.c]))+' · '+money(val)+(cur.wager!=null?' (Daily Double'+(cur.who!=null?', '+esc(J.players[cur.who].name):'')+')':'')+' · '+(q.tier==='core'?'Core':'Depth')+'</div>';
+  h+='<div class="text">'+q.clue+'</div>';
+  if(cur.revealed){ h+='<div class="ans">'+q.ans+refHtml(q)+'</div>'; }
+  h+='</div>';
+  if(J.timer && !cur.revealed){ h+='<div class="timerbar"><i id="tbar"></i></div>'; }
+  h+='<div class="ctrl">';
+  if(!cur.revealed){ h+='<button class="gold" onclick="jReveal()">Show answer <kbd>Space</kbd></button>'; }
+  h+='<button class="ghost" onclick="jSwap()">Swap question</button><button class="ghost" onclick="flagQ(J.cur.cell.q)">Flag</button><span class="spacer"></span><button onclick="jBack(true)">Back to board <kbd>Esc</kbd></button></div>';
+  if(cur.revealed){
+    if(J.mode==='solo'){
+      h+='<div class="judge"><button class="good" onclick="jScore(0,true)">I got it (+'+money(val)+')</button><button class="bad" onclick="jScore(0,false)">Missed (−'+money(val)+')</button><button onclick="jBack(true)">No score</button></div>';
+    } else {
+      h+='<div class="judge">';
+      J.players.forEach(function(p,i){
+        if(cur.wager!=null && cur.who!==i) return;
+        h+='<div class="p"><span class="nm">'+(i+1)+'. '+esc(p.name)+'</span><button class="good" onclick="jScore('+i+',true)">✓</button><button class="bad" onclick="jScore('+i+',false)">✗</button></div>';
+      });
+      h+='</div><p class="hint">Mark wrong answers as they come; the first ✓ closes the clue. <kbd>n</kbd> = ✓ for player n, <kbd>Shift</kbd>+<kbd>n</kbd> = ✗.</p>';
+    }
+  }
+  h+=jScoresHtml(cur.who);
+  app.innerHTML=h;
+  jStopTimer();
+  if(J.timer && !cur.revealed){ var left=J.timer; var bar=document.getElementById('tbar'); jTimerH=setInterval(function(){ left--; if(bar) bar.style.width=Math.max(0,left/J.timer*100)+'%'; if(left<=0){ jStopTimer(); toast('Time'); } },1000); }
+  window.scrollTo(0,0);
+}
+function jReveal(){ if(!J.cur.revealed){ jStopTimer(); J.cur.revealed=true; jClue(); } }
+function jSwap(){ var k=J.cats[J.cur.c]; var nq=pick([k], J.cur.cell.q.tier, 1)[0]; if(nq){ J.cur.cell.q=nq; J.cur.revealed=false; jClue(); toast('Swapped'); } }
+function jScore(i,ok){
+  var cur=J.cur, val = cur.wager!=null ? cur.wager : cur.cell.value;
+  J.players[i].score += ok ? val : -val;
+  if(ok || cur.wager!=null || J.mode==='solo'){ jBack(true); }
+  else { jClue(); }
+}
+function jBack(markUsed){ jStopTimer(); if(markUsed && J.cur){ J.cur.cell.used=true; } J.cur=null; jBoard(); }
+function jNextRound(){ if(J.round===2) return; J.round=2; jBuildRound(); jBoard(); toast('Double Jeopardy: values doubled, two Daily Doubles'); }
+function jFinalSetup(){
+  VIEW={name:'jfinal'};
+  var k = J.cats[Math.floor(Math.random()*6)];
+  var q = pick([k],'depth',1)[0] || pick([k],'core',1)[0];
+  J.final={cat:k, q:q, revealed:false, shown:false, wagers:J.players.map(function(){ return 0; })};
+  jFinal();
+}
+function jFinal(){
+  var f=J.final; var h='<div class="clue"><div class="meta">Final Jeopardy · '+esc(modLabel(f.cat))+'</div>';
+  if(!f.shown){ h+='<div class="text">Category: '+esc(modLabel(f.cat))+'</div></div>';
+    h+='<div class="card"><h3>Wagers (up to each score; a negative score cannot wager)</h3><div class="judge">';
+    J.players.forEach(function(p,i){ h+='<div class="p"><span class="nm">'+esc(p.name)+' <span class="muted">'+money(p.score)+'</span></span><input type="number" id="fw'+i+'" value="'+f.wagers[i]+'" min="0" max="'+Math.max(0,p.score)+'" style="width:110px"></div>'; });
+    h+='</div><div class="row" style="margin-top:12px"><button class="gold" onclick="jFinalShow()">Show the clue</button><button class="ghost" onclick="jFinalSetup()">Different category</button><button class="ghost" onclick="jBoard()">Back</button></div></div>';
+  } else {
+    h+='<div class="text">'+f.q.clue+'</div>';
+    if(f.revealed) h+='<div class="ans">'+f.q.ans+refHtml(f.q)+'</div>';
+    h+='</div>';
+    if(!f.revealed){ h+='<div class="ctrl"><button class="gold" onclick="J.final.revealed=true;jFinal()">Show answer</button></div>'; }
+    else {
+      h+='<div class="judge">';
+      J.players.forEach(function(p,i){ h+='<div class="p"><span class="nm">'+esc(p.name)+' <span class="muted">wager '+money(f.wagers[i])+'</span></span><button class="good" onclick="jFinalScore('+i+',true)">✓</button><button class="bad" onclick="jFinalScore('+i+',false)">✗</button></div>'; });
+      h+='</div><div class="row" style="margin-top:12px"><button class="gold" onclick="jWinner()">Final scores</button></div>';
+    }
+  }
+  h+=jScoresHtml();
+  app.innerHTML=h;
+}
+function jFinalShow(){ var f=J.final; J.players.forEach(function(p,i){ var v=parseInt(document.getElementById('fw'+i).value,10); f.wagers[i]=isNaN(v)?0:Math.min(Math.max(0,v),Math.max(0,p.score)); }); f.shown=true; jFinal(); }
+function jFinalScore(i,ok){ var f=J.final; if(f.done&&f.done[i]) return; f.done=f.done||{}; f.done[i]=true; J.players[i].score += ok ? f.wagers[i] : -f.wagers[i]; jFinal(); }
+function jWinner(){
+  VIEW={name:'jwin'};
+  var ps=J.players.slice().sort(function(a,b){ return b.score-a.score; });
+  var h='<div class="dd">'+esc(ps[0].name)+' wins with '+money(ps[0].score)+'</div><div class="card" style="margin-top:14px"><div class="winners">';
+  ps.forEach(function(p,i){ h+='<div class="w"><div class="muted">'+(i+1)+'.</div><div><b>'+esc(p.name)+'</b></div><div style="color:var(--gold);font-weight:800">'+money(p.score)+'</div></div>'; });
+  h+='</div><div class="row" style="margin-top:14px"><button class="gold" onclick="jSetup(J.mode)">New game</button><button class="ghost" onclick="go(\'\')">Home</button></div></div>';
+  app.innerHTML=h;
+}
+
+/* ============ WHO WANTS TO BE A CP ============ */
+var M=null;
+var LADDER=[100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000];
+var MILESTONES={4:true,9:true};
+function mSetup(mode){
+  VIEW={name:'msetup'};
+  if(dataMissing()) return;
+  var saved=store.get('msetup',{names:['Contestant 1'], mods:[], timer:0, coreN:8});
+  if(mode==='solo') saved.names=[saved.names[0]||'Me'];
+  var h='<div class="card"><h1 class="mtitle">Who Wants to Be a CP — '+(mode==='live'?'live':'solo')+'</h1>';
+  if(mode==='live'){ h+='<h3>Contestants (hot seat rotates in this order)</h3><div class="row" id="mnames">'; saved.names.forEach(function(n,i){ h+='<input type="text" value="'+esc(n)+'" style="width:170px" placeholder="Name '+(i+1)+'">'; }); h+='</div><div class="row" style="margin-top:6px"><button class="small" onclick="mAddName()">+ Add</button><button class="small" onclick="mRemoveName()">− Remove</button></div>'; }
+  h+='<h3 style="margin-top:16px">Scope (pick modules, a domain, or leave empty for everything)</h3>'+pickerHtml('mpick', saved.mods, 0);
+  h+='<h3 style="margin-top:16px">Rules</h3><div class="row">'+
+     '<label>Core questions first <select id="mcore"><option value="8"'+(saved.coreN==8?' selected':'')+'>Q1–8 Core, Q9–15 Depth</option><option value="10"'+(saved.coreN==10?' selected':'')+'>Q1–10 Core, Q11–15 Depth</option><option value="5"'+(saved.coreN==5?' selected':'')+'>Q1–5 Core, Q6–15 Depth</option><option value="15"'+(saved.coreN==15?' selected':'')+'>All Core</option></select></label>'+
+     '<label>Timer <select id="mtimer"><option value="0"'+(saved.timer==0?' selected':'')+'>Off</option><option value="30"'+(saved.timer==30?' selected':'')+'>30 s</option><option value="45"'+(saved.timer==45?' selected':'')+'>45 s</option><option value="60"'+(saved.timer==60?' selected':'')+'>60 s</option></select></label></div>'+
+     '<div class="row" style="margin-top:16px"><button class="gold" onclick="mStart(\''+mode+'\')">Start</button><span class="hint">Live controls: <kbd>A</kbd>–<kbd>D</kbd> lock in · <kbd>Enter</kbd> reveal · <kbd>1</kbd> 50:50 · <kbd>2</kbd> phone · <kbd>3</kbd> audience · <kbd>W</kbd> walk away</span></div></div>';
+  app.innerHTML=h; pickerCount('mpick');
+}
+function mAddName(){ var w=document.getElementById('mnames'); if(w.children.length>=12) return; var i=document.createElement('input'); i.type='text'; i.style.width='170px'; i.value='Contestant '+(w.children.length+1); w.appendChild(i); }
+function mRemoveName(){ var w=document.getElementById('mnames'); if(w.children.length>1) w.removeChild(w.lastChild); }
+function mStart(mode){
+  var mods=pickerSelected('mpick');
+  var names = mode==='live' ? Array.prototype.map.call(document.querySelectorAll('#mnames input'), function(i){ return i.value.trim()||'Contestant'; }) : ['Me'];
+  var coreN=parseInt(document.getElementById('mcore').value,10), timer=parseInt(document.getElementById('mtimer').value,10);
+  store.set('msetup',{names:names, mods:mods, timer:timer, coreN:coreN});
+  var doms = mods.length ? domainsOf(mods) : DOMS.map(function(d){ return d.name; });
+  app.innerHTML='<div class="card">Loading question bank for '+esc(doms.join(', '))+'… '+(mods.length?'':'(all domains, about 18 MB on first load)')+'</div>';
+  loadDomains(doms).then(function(){
+    var keys = mods.length ? mods : Object.keys(MODS);
+    M={mode:mode, keys:keys, coreN:coreN, timer:timer, contestants:names.map(function(n){ return {name:n, winnings:0, played:false}; }), ci:0};
+    mNewLadder();
+    mGame();
+  }).catch(function(e){ app.innerHTML='<div class="card">'+esc(e.message)+'</div>'; });
+}
+function mNewLadder(){
+  var core=pick(M.keys,'core',M.coreN,{mc:true}), depth=pick(M.keys,'depth',15-M.coreN,{mc:true});
+  var ladder=core.concat(depth);
+  if(ladder.length<15){ ladder=ladder.concat(pick(M.keys,null,15-ladder.length,{mc:true})); }
+  M.ladder=ladder.slice(0,15).map(function(q){ var opts=q.mc.map(function(o,i){ return {t:o, ok:i===0}; }); shuffle(opts); return {q:q, opts:opts}; });
+  M.qi=0; M.locked=null; M.revealed=false; M.gone=[]; M.life={fifty:true, phone:true, audience:true}; M.poll=null; M.over=false; M.phoneOn=false;
+}
+function mAmount(idx){ return idx<0 ? 0 : LADDER[idx]; }
+function mSafe(idx){ var s=0; for(var i=0;i<idx;i++){ if(MILESTONES[i]) s=LADDER[i]; } return s; }
+var mTimerH=null; function mStopTimer(){ if(mTimerH){ clearInterval(mTimerH); mTimerH=null; } }
+function mGame(){
+  VIEW={name:'mgame'};
+  var c=M.contestants[M.ci], step=M.ladder[M.qi], q=step.q;
+  var h='<div class="mwrap"><div class="mtop"><div class="who">'+esc(c.name)+'</div><div>Question '+(M.qi+1)+' of 15 · '+(q.tier==='core'?'Core':'Depth')+' · for <span class="amt">'+money(LADDER[M.qi])+'</span></div></div>';
+  h+='<div class="lifelines">'+
+     '<button class="'+(M.life.fifty?'':'used')+'" onclick="mFifty()" '+(M.life.fifty&&!M.revealed?'':'disabled')+'>50:50 <kbd>1</kbd></button>'+
+     '<button class="'+(M.life.phone?'':'used')+'" onclick="mPhone()" '+(M.life.phone&&!M.revealed?'':'disabled')+'>Phone the attending <kbd>2</kbd></button>'+
+     '<button class="'+(M.life.audience?'':'used')+'" onclick="mAudience()" '+(M.life.audience&&!M.revealed?'':'disabled')+'>Ask the audience <kbd>3</kbd></button>'+
+     '<span class="spacer" style="flex:1"></span><button class="ghost small" onclick="mWalk()" '+(M.revealed?'disabled':'')+'>Walk away with '+money(mAmount(M.qi-1))+' <kbd>W</kbd></button></div>';
+  h+='<div class="mq">'+q.clue+'</div>';
+  if(M.timer && !M.revealed){ h+='<div class="timerbar" style="margin:0 0 10px"><i id="mtbar"></i></div>'; }
+  if(M.poll){
+    var tot=M.poll.reduce(function(a,b){ return a+b; },0)||1;
+    var pct=M.mode==='live' ? M.poll.map(function(c){ return Math.round(c/tot*100); }) : M.poll;
+    h+='<div class="poll">'+pct.map(function(p,i){ return '<div style="height:'+Math.max(4,p)+'%"><span>'+(M.mode==='live'?M.poll[i]+' ('+p+'%)':p+'%')+'</span><i>'+'ABCD'[i]+'</i></div>'; }).join('')+'</div><div style="height:20px"></div>';
+    if(M.mode==='live'){ h+='<div class="row" style="justify-content:center;margin-bottom:10px">'+[0,1,2,3].map(function(i){ return M.gone.indexOf(i)>=0?'':'<button class="small" onclick="M.poll['+i+']++;mGame()">+ '+'ABCD'[i]+'</button><button class="small ghost" onclick="M.poll['+i+']=Math.max(0,M.poll['+i+']-1);mGame()">−</button>'; }).join('')+'<span class="hint">Count hands as the room votes</span></div>'; }
+  }
+  if(M.phoneOn){
+    if(M.mode==='live'){ h+='<div class="card" style="border-color:var(--purple2)"><b>Phone the attending.</b> Pick anyone in the room with a pager history. They have 30 seconds and may only speak to the contestant.<div class="timerbar"><i id="ptbar"></i></div></div>'; }
+    else { h+='<div class="card" style="border-color:var(--purple2)"><b>The attending says…</b> “It is from '+esc(modLabel(q.dom+'|'+q.mod))+'. Here is my table, with the bit you need blanked out.”'+(q.extra?'<div class="ref">'+maskAnswer(q.extra, q.ans)+'</div>':'')+'</div>'; }
+  }
+  h+='<div class="opts">';
+  step.opts.forEach(function(o,i){
+    var cls='opt'; if(M.gone.indexOf(i)>=0) cls+=' gone'; if(M.locked===i && !M.revealed) cls+=' locked';
+    if(M.revealed){ if(o.ok) cls+=' right'; else if(M.locked===i) cls+=' wrong'; }
+    h+='<button class="'+cls+'" onclick="mLock('+i+')" '+(M.gone.indexOf(i)>=0||M.revealed?'disabled':'')+'><b>'+'ABCD'[i]+':</b><span>'+o.t+'</span></button>';
+  });
+  h+='</div>';
+  h+='<div class="ctrl">';
+  if(!M.revealed){ h+='<button class="gold" onclick="mReveal()" '+(M.locked==null?'disabled':'')+'>Final answer? Reveal <kbd>Enter</kbd></button>'; }
+  else if(!M.over){ h+='<button class="gold" onclick="mNext()">Next question →</button>'; }
+  h+='<button class="ghost" onclick="mSwap()">Swap question</button><button class="ghost" onclick="flagQ(M.ladder[M.qi].q)">Flag</button><span class="spacer"></span><span class="hint">'+sourceLine(q)+'</span></div>';
+  if(M.revealed){ h+='<div class="card" style="margin-top:12px"><b>Answer:</b> '+q.ans+(q.extra?'<div class="ref">'+q.extra+'</div>':'')+'</div>'; }
+  if(M.over){ h+=mOverHtml(); }
+  h+='<div class="grid2" style="margin-top:14px"><div class="card"><h3>Ladder</h3><div class="ladder">';
+  LADDER.forEach(function(v,i){ h+='<div class="'+(i===M.qi?'cur':i<M.qi?'done':'')+(MILESTONES[i]||i===14?' ms':'')+'"><span>'+(i+1)+'</span><span>'+money(v)+'</span></div>'; });
+  h+='</div></div>';
+  if(M.mode==='live'){ h+='<div class="card"><h3>Winnings</h3><div class="winners">'; M.contestants.forEach(function(k,i){ h+='<div class="w'+(i===M.ci?' active':'')+'"><b>'+esc(k.name)+'</b><div style="color:var(--gold);font-weight:800">'+(k.played||i===M.ci?money(k.winnings):'—')+'</div></div>'; }); h+='</div></div>'; }
+  h+='</div></div>';
+  app.innerHTML=h;
+  mStopTimer();
+  if(M.timer && !M.revealed){ var left=M.timer, bar=document.getElementById('mtbar'); mTimerH=setInterval(function(){ left--; if(bar) bar.style.width=Math.max(0,left/M.timer*100)+'%'; if(left<=0){ mStopTimer(); toast('Time'); } },1000); }
+  window.scrollTo(0,0);
+}
+function mLock(i){ if(M.revealed) return; M.locked=i; mGame(); }
+function mReveal(){
+  if(M.locked==null||M.revealed) return; mStopTimer();
+  M.revealed=true; var ok=M.ladder[M.qi].opts[M.locked].ok;
+  var c=M.contestants[M.ci];
+  if(ok){ c.winnings=LADDER[M.qi]; if(M.qi===14){ M.over=true; M.result='won'; c.played=true; } }
+  else { c.winnings=mSafe(M.qi); c.played=true; M.over=true; M.result='lost'; }
+  mGame();
+}
+function mNext(){ if(!M.revealed||M.over) return; M.qi++; M.locked=null; M.revealed=false; M.gone=[]; M.poll=null; M.phoneOn=false; mGame(); }
+function mWalk(){ if(M.revealed) return; var c=M.contestants[M.ci]; c.winnings=mAmount(M.qi-1); c.played=true; M.over=true; M.result='walk'; M.revealed=true; mGame(); }
+function mFifty(){ if(!M.life.fifty||M.revealed) return; M.life.fifty=false; var wrong=[]; M.ladder[M.qi].opts.forEach(function(o,i){ if(!o.ok) wrong.push(i); }); shuffle(wrong); M.gone=wrong.slice(0,2); if(M.locked!=null && M.gone.indexOf(M.locked)>=0) M.locked=null; mGame(); }
+function maskAnswer(html, ans){
+  var a=plain(ans).trim(); if(a.length<3) return html;
+  var re=new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+  return html.replace(/>([^<]+)</g, function(m, t){ return '>'+t.replace(re,'____')+'<'; });
+}
+var pTimerH=null;
+function mPhone(){ if(!M.life.phone||M.revealed) return; M.life.phone=false; M.phoneOn=true; mGame();
+  if(M.mode==='live'){ var left=30, bar=document.getElementById('ptbar'); if(pTimerH) clearInterval(pTimerH); pTimerH=setInterval(function(){ left--; if(bar) bar.style.width=Math.max(0,left/30*100)+'%'; if(left<=0){ clearInterval(pTimerH); pTimerH=null; toast('Time'); } },1000); } }
+function mAudience(){
+  if(!M.life.audience||M.revealed) return; M.life.audience=false;
+  if(M.mode==='live'){ M.poll=[0,0,0,0]; mGame(); toast('Show of hands'); return; }
+  var opts=M.ladder[M.qi].opts, n=4-M.gone.length;
+  var base = opts.map(function(o,i){ if(M.gone.indexOf(i)>=0) return 0; return o.ok ? 45+Math.random()*35 : 5+Math.random()*25; });
+  var sum=base.reduce(function(a,b){ return a+b; },0); M.poll=base.map(function(b){ return Math.round(b/sum*100); });
+  mGame(); if(M.mode==='live') toast('Show of hands: 30 seconds');
+}
+function mSwap(){ var step=M.ladder[M.qi]; var nq=pick(M.keys, step.q.tier, 1, {mc:true})[0]; if(nq){ var opts=nq.mc.map(function(o,i){ return {t:o, ok:i===0}; }); shuffle(opts); M.ladder[M.qi]={q:nq, opts:opts}; M.locked=null; M.revealed=false; M.gone=[]; M.poll=null; M.phoneOn=false; mGame(); toast('Swapped'); } }
+function mOverHtml(){
+  var c=M.contestants[M.ci];
+  var msg = M.result==='won' ? esc(c.name)+' is a CP millionaire.' : M.result==='walk' ? esc(c.name)+' walks away with '+money(c.winnings)+'.' : 'Wrong answer. '+esc(c.name)+' leaves with '+money(c.winnings)+'.';
+  var h='<div class="dd" style="margin-top:14px;font-size:1.4em">'+msg+'</div><div class="row" style="margin-top:10px">';
+  if(M.mode==='live' && M.ci<M.contestants.length-1){ h+='<button class="gold" onclick="mNextContestant()">Next contestant: '+esc(M.contestants[M.ci+1].name)+'</button>'; }
+  h+='<button onclick="mReplay()">'+(M.mode==='live'?'Same contestant, new ladder':'Play again')+'</button><button class="ghost" onclick="mSetup(M.mode)">Setup</button></div>';
+  return h;
+}
+function mNextContestant(){ M.ci++; mNewLadder(); mGame(); }
+function mReplay(){ mNewLadder(); M.contestants[M.ci].winnings=0; M.contestants[M.ci].played=false; mGame(); }
+
+
+/* ============ FLASHCARDS ============ */
+var F=null;
+var PROG = store.get('fc', {});      /* id -> [intervalDays, ease, dueMs, reps, lapses] */
+function fcSave(){ store.set('fc', PROG); }
+var DAY=86400000;
+function fcToday(){ return new Date().toISOString().slice(0,10); }
+function fcNewToday(){ var n=store.get('fcNew',{d:'',n:0}); if(n.d!==fcToday()){ n={d:fcToday(),n:0}; store.set('fcNew',n); } return n; }
+function fcStats(){ var now=Date.now(), seen=0, due=0, mastered=0; for(var k in PROG){ var p=PROG[k]; seen++; if(p[2]<=now) due++; if(p[0]>=21) mastered++; } return {seen:seen, due:due, mastered:mastered}; }
+function fcSetup(){
+  VIEW={name:'fcsetup'};
+  if(dataMissing()) return;
+  var saved=store.get('fcsetup',{mods:[], tier:'both', kind:'both', mode:'review', newPerDay:20});
+  var st=fcStats();
+  var h='<div class="fc"><div class="card"><h1 class="fctitle">CP Flashcards</h1>'+
+  '<div class="stat"><div><b>'+st.seen.toLocaleString()+'</b><span>cards started</span></div><div><b>'+st.due.toLocaleString()+'</b><span>due now</span></div><div><b>'+st.mastered.toLocaleString()+'</b><span>mastered (3 weeks+)</span></div></div>'+
+  '<h3 style="margin-top:16px">What to study (a domain, some modules, or everything)</h3>'+pickerHtml('fpick', saved.mods, 0)+
+  '<h3 style="margin-top:16px">Options</h3><div class="row">'+
+  '<label>Tier <select id="ftier"><option value="both"'+(saved.tier==='both'?' selected':'')+'>Core and Depth</option><option value="core"'+(saved.tier==='core'?' selected':'')+'>Core only</option><option value="depth"'+(saved.tier==='depth'?' selected':'')+'>Depth only</option></select></label>'+
+  '<label>Card type <select id="fkind"><option value="both"'+(saved.kind==='both'?' selected':'')+'>Fill-in and open questions</option><option value="cloze"'+(saved.kind==='cloze'?' selected':'')+'>Fill-in only</option><option value="basic"'+(saved.kind==='basic'?' selected':'')+'>Open questions only</option></select></label>'+
+  '<label>Mode <select id="fmode"><option value="review"'+(saved.mode==='review'?' selected':'')+'>Spaced repetition (due cards, then new)</option><option value="cram"'+(saved.mode==='cram'?' selected':'')+'>Cram (everything in scope, once)</option></select></label>'+
+  '<label>New cards per day <input type="number" id="fnew" value="'+saved.newPerDay+'" min="5" max="200" style="width:90px"></label></div>'+
+  '<div class="row" style="margin-top:16px"><button class="gold" onclick="fcStart()">Start studying</button><span class="hint">Tap the card to flip · <kbd>Space</kbd> flip · <kbd>1</kbd>–<kbd>4</kbd> grade</span></div></div>'+
+  '<div class="card"><h3>Your progress</h3><p class="hint">Progress lives in this browser. To continue on another device, copy it here and paste it there. On a phone, add this page to the home screen so it opens like an app.</p>'+
+  '<div class="row"><button class="small" onclick="fcCopy()">Copy progress</button><button class="small" onclick="fcPasteBox()">Paste progress</button><button class="small ghost" onclick="fcReset(this)">Reset progress</button></div><div id="fpaste"></div></div></div>';
+  app.innerHTML=h; pickerCount('fpick');
+}
+function fcCopy(){ var t=JSON.stringify(PROG); try{ navigator.clipboard.writeText(t).then(function(){ toast('Progress copied ('+Object.keys(PROG).length+' cards)'); }, function(){ fcShowText(t); }); }catch(e){ fcShowText(t); } }
+function fcShowText(t){ document.getElementById('fpaste').innerHTML='<textarea style="width:100%;height:100px;margin-top:8px">'+esc(t)+'</textarea><p class="hint">Select all and copy.</p>'; }
+function fcPasteBox(){ document.getElementById('fpaste').innerHTML='<textarea id="fpastein" style="width:100%;height:100px;margin-top:8px" placeholder="Paste progress here"></textarea><div class="row" style="margin-top:6px"><button class="small" onclick="fcPaste()">Merge into this device</button></div>'; }
+function fcPaste(){ try{ var o=JSON.parse(document.getElementById('fpastein').value); var n=0; for(var k in o){ if(!PROG[k] || o[k][3]>PROG[k][3]){ PROG[k]=o[k]; n++; } } fcSave(); toast('Merged '+n+' cards'); fcSetup(); }catch(e){ toast('That did not look like progress text'); } }
+function fcReset(btn){ if(btn.dataset.armed){ PROG={}; fcSave(); toast('Progress reset'); fcSetup(); } else { btn.dataset.armed='1'; btn.textContent='Tap again to confirm reset'; } }
+function fcStart(){
+  var mods=pickerSelected('fpick');
+  var tier=document.getElementById('ftier').value, kind=document.getElementById('fkind').value, mode=document.getElementById('fmode').value;
+  var newPerDay=parseInt(document.getElementById('fnew').value,10)||20;
+  store.set('fcsetup',{mods:mods, tier:tier, kind:kind, mode:mode, newPerDay:newPerDay});
+  var doms = mods.length ? domainsOf(mods) : DOMS.map(function(d){ return d.name; });
+  app.innerHTML='<div class="card">Loading '+esc(doms.join(', '))+'… '+(mods.length?'':'(all domains, about 18 MB on first load)')+'</div>';
+  loadDomains(doms).then(function(){
+    var keys = mods.length ? mods : Object.keys(MODS);
+    var all = pool(keys, tier==='both'?null:tier, kind==='both'?{}:{kind:kind});
+    if(!all.length){ toast('No cards in that scope'); fcSetup(); return; }
+    F={mode:mode, all:all, newPerDay:newPerDay, done:0, again:0, good:0, learn:[], flipped:false, cur:null, start:Date.now()};
+    if(mode==='cram'){ F.queue=shuffle(all.slice()); F.total=F.queue.length; }
+    else {
+      var now=Date.now(), due=[], fresh=[];
+      all.forEach(function(q){ var p=PROG[q.id]; if(p){ if(p[2]<=now) due.push(q); } else fresh.push(q); });
+      due.sort(function(a,b){ return PROG[a.id][2]-PROG[b.id][2]; });
+      var nt=fcNewToday(); var room=Math.max(0, newPerDay-nt.n);
+      shuffle(fresh); F.queue=due.concat(fresh.slice(0, room)); F.total=F.queue.length; F.dueN=due.length; F.newN=Math.min(room, fresh.length); F.freshLeft=fresh.length-F.newN;
+    }
+    fcNext();
+  }).catch(function(e){ app.innerHTML='<div class="card">'+esc(e.message)+'</div>'; });
+}
+function fcNext(){
+  var now=Date.now();
+  if(F.learn.length && (F.learn[0].at<=now || !F.queue.length)){ F.cur=F.learn.shift().q; }
+  else if(F.queue.length){ F.cur=F.queue.shift(); }
+  else { return fcEnd(); }
+  F.flipped=false; fcCard();
+}
+function fcIntervalLabel(d){ if(d<1) return '10 min'; if(d<30) return d+' d'; if(d<365) return Math.round(d/30)+' mo'; return (d/365).toFixed(1)+' y'; }
+function fcPreview(q){ var p=PROG[q.id]||[0,250,0,0,0]; var i=p[0], e=p[1]; return {again:0, hard:Math.max(1,Math.round(i*1.2))||1, good:i===0?1:(i===1?3:Math.round(i*e/100)), easy:i===0?3:Math.round(i*e/100*1.3)}; }
+function fcCard(){
+  VIEW={name:'fstudy'};
+  var q=F.cur, isNew=!PROG[q.id];
+  var rest=[q].concat(F.queue), dueN=rest.filter(function(x){ return PROG[x.id]; }).length, newN=rest.length-dueN;
+  var h='<div class="fc"><div class="fcbar"><span>'+(F.mode==='cram'?'<b>'+(F.total-F.queue.length-F.learn.length)+'</b> of '+F.total:'Due <b>'+dueN+'</b> · New <b>'+newN+'</b> · Learning <b>'+F.learn.length+'</b>')+'</span><span><button class="small ghost" onclick="fcEnd()">End session</button></span></div>';
+  h+='<div class="bar"><i style="width:'+Math.round((F.done)/(F.total||1)*100)+'%"></i></div>';
+  h+='<div class="fccard" onclick="fcFlip()"><div class="src">'+esc(q.dom)+' · '+esc(modLabel(q.dom+'|'+q.mod))+' · '+(q.tier==='core'?'Core':'Depth')+(isNew&&F.mode==='review'?' · new':'')+'</div>';
+  if(!F.flipped){ h+='<div class="front">'+q.clue+'</div><div class="tap">Tap to show the answer</div>'; }
+  else {
+    var filled = q.kind==='cloze' ? q.clue.replace(/_{4,}/g, '<span class="blank filled">'+q.ans+'</span>') : q.clue;
+    h+='<div class="front">'+filled+'</div><div class="back">'+(q.kind==='cloze'?'<div class="a">'+q.ans+'</div>':'')+(q.kind==='basic'?'<div class="ref">'+q.ans+'</div>':refHtml(q))+'</div>';
+  }
+  h+='</div>';
+  if(F.flipped){
+    if(F.mode==='cram'){ h+='<div class="grades2"><button class="bad" onclick="fcCram(false)">Don’t know <kbd>1</kbd></button><button class="good" onclick="fcCram(true)">Know <kbd>3</kbd></button></div>'; }
+    else { var pv=fcPreview(q); h+='<div class="grades"><button class="g1" onclick="fcGrade(1)">Again<small>'+fcIntervalLabel(pv.again)+'</small></button><button class="g2" onclick="fcGrade(2)">Hard<small>'+fcIntervalLabel(pv.hard)+'</small></button><button class="g3" onclick="fcGrade(3)">Good<small>'+fcIntervalLabel(pv.good)+'</small></button><button class="g4" onclick="fcGrade(4)">Easy<small>'+fcIntervalLabel(pv.easy)+'</small></button></div>'; }
+    h+='<div class="row" style="margin-top:10px;justify-content:flex-end"><button class="small ghost" onclick="flagQ(F.cur)">Flag this card</button></div>';
+  }
+  h+='</div>';
+  app.innerHTML=h; window.scrollTo(0,0);
+}
+function fcFlip(){ if(!F.flipped){ F.flipped=true; fcCard(); } }
+function fcGrade(g){
+  var q=F.cur, p=PROG[q.id], isNew=!p; p=p||[0,250,0,0,0];
+  var pv=fcPreview(q), i=p[0], e=p[1], now=Date.now();
+  if(g===1){ i=0; e=Math.max(130,e-20); p[4]++; F.again++; F.learn.push({q:q, at:now+10*60000}); p[2]=now+10*60000; }
+  else { i = g===2?pv.hard : g===3?pv.good : pv.easy; if(g===2) e=Math.max(130,e-15); if(g===4) e+=15; p[2]=now+i*DAY; F.good++; F.done++; }
+  p[0]=i; p[1]=e; p[3]++; PROG[q.id]=p; fcSave();
+  if(isNew){ var nt=fcNewToday(); nt.n++; store.set('fcNew',nt); }
+  fcNext();
+}
+function fcCram(know){ if(know){ F.good++; F.done++; } else { F.again++; F.queue.push(F.cur); } fcNext(); }
+function fcEnd(){
+  VIEW={name:'fcend'};
+  var mins=Math.max(1,Math.round((Date.now()-F.start)/60000));
+  var h='<div class="fc"><div class="card"><h2 class="fctitle">Session done</h2><div class="stat"><div><b>'+F.done+'</b><span>cards cleared</span></div><div><b>'+F.again+'</b><span>marked again</span></div><div><b>'+mins+'</b><span>minutes</span></div></div>';
+  if(F.mode==='review' && F.freshLeft){ h+='<p class="hint" style="margin-top:12px">'+F.freshLeft.toLocaleString()+' new cards remain in this scope; '+F.newPerDay+' are introduced per day. Raise the daily limit on the setup screen if you want more.</p>'; }
+  h+='<div class="row" style="margin-top:12px"><button class="gold" onclick="fcStart2()">Study more</button><button onclick="fcSetup()">Change scope</button><button class="ghost" onclick="go(\'\')">Home</button></div></div></div>';
+  app.innerHTML=h;
+}
+function fcStart2(){ var s=store.get('fcsetup',null); if(!s){ return fcSetup(); } fcSetup(); setTimeout(function(){ fcStart(); },0); }
+
+/* ============ keyboard ============ */
+document.addEventListener('keydown', function(e){
+  if(e.target && (e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')) return;
+  if(VIEW.name==='jclue'){
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); jReveal(); return; }
+    if(e.key==='Escape'){ jBack(true); return; }
+    var n=parseInt(e.key,10); if(!isNaN(n) && n>=1 && n<=J.players.length && J.cur.revealed){ jScore(n-1, true); return; }
+    var shiftNums={'!':1,'@':2,'#':3,'$':4,'%':5,'^':6,'&':7,'*':8};
+    if(e.shiftKey && shiftNums[e.key] && shiftNums[e.key]<=J.players.length && J.cur.revealed){ jScore(shiftNums[e.key]-1, false); return; }
+  }
+  if(VIEW.name==='fstudy'){
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); if(!F.flipped){ fcFlip(); } return; }
+    if(F.flipped){ if(F.mode==='cram'){ if(e.key==='1') return fcCram(false); if(e.key==='3'||e.key==='2'||e.key==='4') return fcCram(true); } else { var g=parseInt(e.key,10); if(g>=1&&g<=4) return fcGrade(g); } }
+  }
+  if(VIEW.name==='mgame'){
+    var k=e.key.toUpperCase();
+    if('ABCD'.indexOf(k)>=0 && k.length===1){ mLock('ABCD'.indexOf(k)); return; }
+    if(e.key==='Enter'){ if(!M.revealed) mReveal(); else if(!M.over) mNext(); return; }
+    if(e.key==='1') return mFifty(); if(e.key==='2') return mPhone(); if(e.key==='3') return mAudience();
+    if(k==='W') return mWalk();
+  }
+});
+route();
+</script>
+</body>
+</html>
