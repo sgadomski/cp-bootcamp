@@ -91,12 +91,11 @@
   .ref{background:#fbfaf6;color:#1f2430;border-radius:10px;padding:10px 12px;font-size:.78em;line-height:1.35;margin-top:14px;text-align:left}
   .ref .xh{font-weight:700;color:#1e3a5f;border-bottom:2px solid #1e3a5f;margin-bottom:6px;padding-bottom:3px}
   .ref .xt{width:100%;border-collapse:collapse;margin:6px 0}
-  .ref .xt th{text-align:left;background:#eaf0f7;color:#1e3a5f;padding:4px 6px;border-bottom:1px solid #1e3a5f}
+  .ref .xt th{text-align:left;background:#eaf0f7;color:#1e3a5f;padding:4px 6px;border-bottom:1px solid #1e3a5f;font-weight:700;vertical-align:top}
   .ref .xt td{padding:4px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top}
-  .ref .xc{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
-  .ref .xk{flex:1 1 140px;background:#eef2f8;border-radius:8px;overflow:hidden;min-width:0}
-  .ref .xkh{background:#1e3a5f;color:#fff;font-weight:700;padding:4px 8px}
-  .ref .xr{padding:3px 8px;border-top:1px solid #d9dfe8}
+  .ref .xt tr:last-child th,.ref .xt tr:last-child td{border-bottom:none}
+  .ref .xt tr:nth-child(even) td{background:#f6f8fb}
+  .ref .xs{color:#5b6677;font-size:.92em;margin:4px 0 2px}
   .ref .xp{padding:2px 0}
   .ref .xa{text-align:center;color:#1e3a5f;font-weight:700}
   .ref .blank{border-bottom:2px solid #1e3a5f}
@@ -198,6 +197,15 @@ function fontCycle(){ var b=document.body; if(b.classList.contains('huge')){ b.c
 document.body.className = store.get('font','');
 function money(n){ return (n<0?'−':'') + '$' + Math.abs(n).toLocaleString(); }
 function plain(s){ return String(s).replace(/<[^>]+>/g,''); }
+/* draw the cloze blank as the gold underline wherever a clue is shown */
+function fmt(s){ return String(s).replace(/_{4,}/g, "<span class='blank'>______</span>"); }
+/* a question whose answer is far longer or shorter than every distractor gives itself away */
+function lengthTell(q){
+  if(!q.mc) return false;
+  var la=plain(q.mc[0]).length, mx=0, mn=1e9;
+  for(var i=1;i<q.mc.length;i++){ var l=plain(q.mc[i]).length; if(l>mx)mx=l; if(l<mn)mn=l; }
+  return la > 2*mx || (mn>0 && la*2 < mn);
+}
 
 var loaded = {};
 function loadDomains(names){
@@ -220,6 +228,8 @@ function pool(modKeys, tier, opts){
       if(q.mod!==code) return;
       if(tier && q.tier!==tier) return;
       if(opts.mc && !q.mc) return;
+      if(opts.quality && (q.mcq||0) < opts.quality) return;
+      if(opts.fair && lengthTell(q)) return;
       if(opts.kind && q.kind!==opts.kind) return;
       out.push(q);
     });
@@ -236,7 +246,7 @@ function pick(modKeys, tier, n, opts){
   persistUsed();
   return out;
 }
-function modLabel(k){ var m=MODS[k]; if(!m) return k; return (/^[A-Z]{1,2}\d/.test(m.code)||/^(HP|HN|HT|HD|MP)\d/.test(m.code)) ? m.code+' '+m.name : m.name; }
+function modLabel(k){ var m=MODS[k]; if(!m) return k; return m.name; }
 function flagQ(q){ if(flagged.indexOf(q.id)<0){ flagged.push(q.id); store.set('flagged', flagged); } toast('Flagged for review'); }
 function refHtml(q){ var x = q.kind==='basic' ? '' : q.extra; return x ? '<div class="ref">'+x+'</div>' : ''; }
 function sourceLine(q){ return '<span class="muted">'+esc(q.dom)+' · '+esc(modLabel(q.dom+'|'+q.mod))+' · '+(q.tier==='core'?'Core':'Depth')+'</span>'; }
@@ -260,7 +270,7 @@ function dataMissing(){
   if(DOMS.length) return false;
   app.innerHTML='<div class="card" style="border-color:var(--red)"><h2 style="color:var(--red)">Question bank not found</h2>'+
   '<p>This page loads its questions from a <code>data</code> folder that must sit beside <code>index.html</code>.</p>'+
-  '<p><b>If you opened this from the downloaded zip:</b> extract the whole zip first (right-click → Extract All on Windows, double-click on a Mac), then open <code>index.html</code> from the extracted <code>cp-game-night</code> folder. Opening it from inside the zip extracts only this one file.</p>'+
+  '<p><b>If you opened this from the downloaded zip:</b> extract the whole zip first (right-click → Extract All on Windows, double-click on a Mac), then open <code>index.html</code> from the extracted <code>cp-bootcamp</code> folder. Opening it from inside the zip extracts only this one file.</p>'+
   '<p><b>If you downloaded only index.html:</b> use the full zip instead; the page is nothing without its data files.</p>'+
   '<p><b>If you are on the published link:</b> reload once; if this message stays, tell the person who built it.</p></div>';
   return true;
@@ -308,7 +318,21 @@ function pickerSelected(id){ return Array.prototype.map.call(document.querySelec
 function pickerCount(id,max){ var n=pickerSelected(id).length; var c=document.getElementById(id+'-count'); if(c) c.textContent = n+' selected'+(max?' (up to '+max+')':''); }
 function pickerToggle(el,id,max){ if(!el.classList.contains('on') && max && pickerSelected(id).length>=max){ toast('Already '+max+' selected'); return; } el.classList.toggle('on'); pickerCount(id,max); }
 function pickerClear(id){ document.querySelectorAll('#'+id+' .pill.on').forEach(function(p){ p.classList.remove('on'); }); pickerCount(id); }
-function pickerDomain(id,dom,max){ pickerClear(id); var pills=Array.prototype.filter.call(document.querySelectorAll('#'+id+' .pill'), function(p){ return (p.getAttribute('data-k')||'').indexOf(dom+'|')===0; }); if(max && pills.length>max) pills=shuffle(pills).slice(0,max); pills.forEach(function(p){ p.classList.add('on'); }); pickerCount(id,max); }
+function pickerDomain(id,dom,max){
+  pickerClear(id);
+  var all=Array.prototype.slice.call(document.querySelectorAll('#'+id+' .pill[data-k]'));
+  var mine=all.filter(function(p){ return (p.getAttribute('data-k')||'').indexOf(dom+'|')===0; });
+  var chosen = (max && mine.length>max) ? shuffle(mine.slice()).slice(0,max) : mine;
+  chosen.forEach(function(p){ p.classList.add('on'); });
+  /* Apheresis, Blood Groups and Urinalysis have fewer than six modules — top the board up
+     so a single-domain session is not a dead end */
+  if(max && chosen.length<max){
+    var rest=shuffle(all.filter(function(p){ return chosen.indexOf(p)<0; })).slice(0,max-chosen.length);
+    rest.forEach(function(p){ p.classList.add('on'); });
+    toast(dom+' has only '+mine.length+' modules — topped up to '+max);
+  }
+  pickerCount(id,max);
+}
 function pickerRandom(id,max){ pickerClear(id); var pills=Array.prototype.slice.call(document.querySelectorAll('#'+id+' .pill[data-k]')); shuffle(pills).slice(0,max||6).forEach(function(p){ p.classList.add('on'); }); pickerCount(id,max); }
 function domainsOf(keys){ var s={}; keys.forEach(function(k){ s[k.split('|')[0]]=1; }); return Object.keys(s); }
 
@@ -402,23 +426,34 @@ function jDailyDouble(){
   var cell=J.cur.cell;
   var h='<div class="dd">DAILY DOUBLE</div><div class="card" style="margin-top:14px">';
   if(J.mode==='live'){
-    h+='<div class="row"><label>Who found it? <select id="ddwho">'+J.players.map(function(p,i){ return '<option value="'+i+'">'+esc(p.name)+'</option>'; }).join('')+'</select></label>';
+    h+='<div class="row"><label>Who found it? <select id="ddwho" onchange="jDDCap()">'+J.players.map(function(p,i){ return '<option value="'+i+'">'+esc(p.name)+'</option>'; }).join('')+'</select></label>';
   } else { h+='<div class="row">'; }
-  var maxW = Math.max.apply(null, J.players.map(function(p){ return p.score; }).concat([J.round===2?2000:1000]));
-  h+='<label>Wager <input type="number" id="ddwager" value="'+cell.value+'" min="5" max="'+maxW+'" style="width:140px"></label><span class="hint">Max '+money(maxW)+' (your score or the top value, whichever is higher)</span></div>';
+  h+='<label>Wager <input type="number" id="ddwager" value="'+cell.value+'" min="5" style="width:140px"></label><span class="hint" id="ddcap"></span></div>';
   h+='<div class="row" style="margin-top:12px"><button class="gold" onclick="jDDGo()">Show the clue</button><button class="ghost" onclick="jBoard()">Back</button></div></div>';
   app.innerHTML=h;
+  jDDCap();
+}
+/* the cap is the finder's own score or the top clue value, never another player's score */
+function jDDWho(){ var s=document.getElementById('ddwho'); return s ? parseInt(s.value,10) : 0; }
+function jDDMax(){ return Math.max(J.players[jDDWho()].score, J.round===2?2000:1000); }
+function jDDCap(){
+  var m=jDDMax(), inp=document.getElementById('ddwager'), cap=document.getElementById('ddcap');
+  if(!inp) return;
+  inp.max=m; if(parseInt(inp.value,10)>m) inp.value=m;
+  if(cap) cap.textContent='Max '+money(m)+' (this player’s score or the top clue value, whichever is higher)';
 }
 function jDDGo(){
-  var w=parseInt(document.getElementById('ddwager').value,10); if(isNaN(w)||w<0){ toast('Enter a wager'); return; }
-  J.cur.wager=w; J.cur.who = J.mode==='live' ? parseInt(document.getElementById('ddwho').value,10) : 0; J.cur.cell.ddDone=true;
+  var m=jDDMax();
+  var w=parseInt(document.getElementById('ddwager').value,10); if(isNaN(w)||w<5){ toast('Enter a wager of at least $5'); return; }
+  if(w>m){ w=m; toast('Wager capped at '+money(m)); }
+  J.cur.who = jDDWho(); J.cur.wager=w; J.cur.cell.ddDone=true;
   jClue();
 }
 function jClue(){
   VIEW={name:'jclue'};
   var cur=J.cur, q=cur.cell.q, val = cur.wager!=null ? cur.wager : cur.cell.value;
   var h='<div class="clue"><div class="meta">'+esc(modLabel(J.cats[cur.c]))+' · '+money(val)+(cur.wager!=null?' (Daily Double'+(cur.who!=null?', '+esc(J.players[cur.who].name):'')+')':'')+' · '+(q.tier==='core'?'Core':'Depth')+'</div>';
-  h+='<div class="text">'+q.clue+'</div>';
+  h+='<div class="text">'+fmt(q.clue)+'</div>';
   if(cur.revealed){ h+='<div class="ans">'+q.ans+refHtml(q)+'</div>'; }
   h+='</div>';
   if(J.timer && !cur.revealed){ h+='<div class="timerbar"><i id="tbar"></i></div>'; }
@@ -467,7 +502,7 @@ function jFinal(){
     J.players.forEach(function(p,i){ h+='<div class="p"><span class="nm">'+esc(p.name)+' <span class="muted">'+money(p.score)+'</span></span><input type="number" id="fw'+i+'" value="'+f.wagers[i]+'" min="0" max="'+Math.max(0,p.score)+'" style="width:110px"></div>'; });
     h+='</div><div class="row" style="margin-top:12px"><button class="gold" onclick="jFinalShow()">Show the clue</button><button class="ghost" onclick="jFinalSetup()">Different category</button><button class="ghost" onclick="jBoard()">Back</button></div></div>';
   } else {
-    h+='<div class="text">'+f.q.clue+'</div>';
+    h+='<div class="text">'+fmt(f.q.clue)+'</div>';
     if(f.revealed) h+='<div class="ans">'+f.q.ans+refHtml(f.q)+'</div>';
     h+='</div>';
     if(!f.revealed){ h+='<div class="ctrl"><button class="gold" onclick="J.final.revealed=true;jFinal()">Show answer</button></div>'; }
@@ -525,10 +560,18 @@ function mStart(mode){
     mGame();
   }).catch(function(e){ app.innerHTML='<div class="card">'+esc(e.message)+'</div>'; });
 }
+/* the builder scores each question's distractors in q.mcq (0–3); prefer the best, and skip
+   the ones whose answer length alone gives it away. Fall back if the scope is too narrow. */
+function mPick(tier,n){
+  if(n<=0) return [];
+  var out=pick(M.keys,tier,n,{mc:true,quality:3,fair:true});
+  if(out.length<n) out=out.concat(pick(M.keys,tier,n-out.length,{mc:true}));
+  return out;
+}
 function mNewLadder(){
-  var core=pick(M.keys,'core',M.coreN,{mc:true}), depth=pick(M.keys,'depth',15-M.coreN,{mc:true});
+  var core=mPick('core',M.coreN), depth=mPick('depth',15-M.coreN);
   var ladder=core.concat(depth);
-  if(ladder.length<15){ ladder=ladder.concat(pick(M.keys,null,15-ladder.length,{mc:true})); }
+  if(ladder.length<15){ ladder=ladder.concat(mPick(null,15-ladder.length)); }
   M.ladder=ladder.slice(0,15).map(function(q){ var opts=q.mc.map(function(o,i){ return {t:o, ok:i===0}; }); shuffle(opts); return {q:q, opts:opts}; });
   M.qi=0; M.locked=null; M.revealed=false; M.gone=[]; M.life={fifty:true, phone:true, audience:true}; M.poll=null; M.over=false; M.phoneOn=false;
 }
@@ -544,7 +587,7 @@ function mGame(){
      '<button class="'+(M.life.phone?'':'used')+'" onclick="mPhone()" '+(M.life.phone&&!M.revealed?'':'disabled')+'>Phone the attending <kbd>2</kbd></button>'+
      '<button class="'+(M.life.audience?'':'used')+'" onclick="mAudience()" '+(M.life.audience&&!M.revealed?'':'disabled')+'>Ask the audience <kbd>3</kbd></button>'+
      '<span class="spacer" style="flex:1"></span><button class="ghost small" onclick="mWalk()" '+(M.revealed?'disabled':'')+'>Walk away with '+money(mAmount(M.qi-1))+' <kbd>W</kbd></button></div>';
-  h+='<div class="mq">'+q.clue+'</div>';
+  h+='<div class="mq">'+fmt(q.clue)+'</div>';
   if(M.timer && !M.revealed){ h+='<div class="timerbar" style="margin:0 0 10px"><i id="mtbar"></i></div>'; }
   if(M.poll){
     var tot=M.poll.reduce(function(a,b){ return a+b; },0)||1;
@@ -607,7 +650,7 @@ function mAudience(){
   var sum=base.reduce(function(a,b){ return a+b; },0); M.poll=base.map(function(b){ return Math.round(b/sum*100); });
   mGame(); if(M.mode==='live') toast('Show of hands: 30 seconds');
 }
-function mSwap(){ var step=M.ladder[M.qi]; var nq=pick(M.keys, step.q.tier, 1, {mc:true})[0]; if(nq){ var opts=nq.mc.map(function(o,i){ return {t:o, ok:i===0}; }); shuffle(opts); M.ladder[M.qi]={q:nq, opts:opts}; M.locked=null; M.revealed=false; M.gone=[]; M.poll=null; M.phoneOn=false; mGame(); toast('Swapped'); } }
+function mSwap(){ var step=M.ladder[M.qi]; var nq=pick(M.keys, step.q.tier, 1, {mc:true,quality:3,fair:true})[0] || pick(M.keys, step.q.tier, 1, {mc:true})[0]; if(nq){ var opts=nq.mc.map(function(o,i){ return {t:o, ok:i===0}; }); shuffle(opts); M.ladder[M.qi]={q:nq, opts:opts}; M.locked=null; M.revealed=false; M.gone=[]; M.poll=null; M.phoneOn=false; mGame(); toast('Swapped'); } }
 function mOverHtml(){
   var c=M.contestants[M.ci];
   var msg = M.result==='won' ? esc(c.name)+' is a CP millionaire.' : M.result==='walk' ? esc(c.name)+' walks away with '+money(c.winnings)+'.' : 'Wrong answer. '+esc(c.name)+' leaves with '+money(c.winnings)+'.';
@@ -682,7 +725,9 @@ function fcNext(){
   F.flipped=false; fcCard();
 }
 function fcIntervalLabel(d){ if(d<1) return '10 min'; if(d<30) return d+' d'; if(d<365) return Math.round(d/30)+' mo'; return (d/365).toFixed(1)+' y'; }
-function fcPreview(q){ var p=PROG[q.id]||[0,250,0,0,0]; var i=p[0], e=p[1]; return {again:0, hard:Math.max(1,Math.round(i*1.2))||1, good:i===0?1:(i===1?3:Math.round(i*e/100)), easy:i===0?3:Math.round(i*e/100*1.3)}; }
+/* on an unseen card the four buttons must land on four different intervals:
+   Again 10 min · Hard 1 d · Good 2 d · Easy 4 d */
+function fcPreview(q){ var p=PROG[q.id]||[0,250,0,0,0]; var i=p[0], e=p[1]; return {again:0, hard:Math.max(1,Math.round(i*1.2))||1, good:i===0?2:(i===1?3:Math.round(i*e/100)), easy:i===0?4:Math.round(i*e/100*1.3)}; }
 function fcCard(){
   VIEW={name:'fstudy'};
   var q=F.cur, isNew=!PROG[q.id];
@@ -690,9 +735,11 @@ function fcCard(){
   var h='<div class="fc"><div class="fcbar"><span>'+(F.mode==='cram'?'<b>'+(F.total-F.queue.length-F.learn.length)+'</b> of '+F.total:'Due <b>'+dueN+'</b> · New <b>'+newN+'</b> · Learning <b>'+F.learn.length+'</b>')+'</span><span><button class="small ghost" onclick="fcEnd()">End session</button></span></div>';
   h+='<div class="bar"><i style="width:'+Math.round((F.done)/(F.total||1)*100)+'%"></i></div>';
   h+='<div class="fccard" onclick="fcFlip()"><div class="src">'+esc(q.dom)+' · '+esc(modLabel(q.dom+'|'+q.mod))+' · '+(q.tier==='core'?'Core':'Depth')+(isNew&&F.mode==='review'?' · new':'')+'</div>';
-  if(!F.flipped){ h+='<div class="front">'+q.clue+'</div><div class="tap">Tap to show the answer</div>'; }
+  if(!F.flipped){ h+='<div class="front">'+fmt(q.clue)+'</div><div class="tap">Tap to show the answer</div>'; }
   else {
-    var filled = q.kind==='cloze' ? q.clue.replace(/_{4,}/g, '<span class="blank filled">'+q.ans+'</span>') : q.clue;
+    /* a clue can carry more than one blank; its answer is then "first / second" */
+    var bits=String(q.ans).split(' / '), bi=0;
+    var filled = q.kind==='cloze' ? q.clue.replace(/_{4,}/g, function(){ var v=bits[bi]||bits[bits.length-1]; bi++; return '<span class="blank filled">'+v+'</span>'; }) : q.clue;
     h+='<div class="front">'+filled+'</div><div class="back">'+(q.kind==='cloze'?'<div class="a">'+q.ans+'</div>':'')+(q.kind==='basic'?'<div class="ref">'+q.ans+'</div>':refHtml(q))+'</div>';
   }
   h+='</div>';
@@ -731,9 +778,11 @@ document.addEventListener('keydown', function(e){
   if(VIEW.name==='jclue'){
     if(e.key===' '||e.key==='Enter'){ e.preventDefault(); jReveal(); return; }
     if(e.key==='Escape'){ jBack(true); return; }
-    var n=parseInt(e.key,10); if(!isNaN(n) && n>=1 && n<=J.players.length && J.cur.revealed){ jScore(n-1, true); return; }
+    /* on a Daily Double only the player who found it may be judged — the same rule the buttons follow */
+    var judgeable=function(i){ return J.cur.wager==null || J.cur.who===i; };
+    var n=parseInt(e.key,10); if(!isNaN(n) && n>=1 && n<=J.players.length && J.cur.revealed && judgeable(n-1)){ jScore(n-1, true); return; }
     var shiftNums={'!':1,'@':2,'#':3,'$':4,'%':5,'^':6,'&':7,'*':8};
-    if(e.shiftKey && shiftNums[e.key] && shiftNums[e.key]<=J.players.length && J.cur.revealed){ jScore(shiftNums[e.key]-1, false); return; }
+    if(e.shiftKey && shiftNums[e.key] && shiftNums[e.key]<=J.players.length && J.cur.revealed && judgeable(shiftNums[e.key]-1)){ jScore(shiftNums[e.key]-1, false); return; }
   }
   if(VIEW.name==='fstudy'){
     if(e.key===' '||e.key==='Enter'){ e.preventDefault(); if(!F.flipped){ fcFlip(); } return; }
