@@ -75,6 +75,7 @@
   .clue .meta{font-size:.8em;color:#c9d2ff;margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em}
   .clue .ans{margin-top:22px;font-size:1.5em;color:var(--gold);font-weight:700;border-top:1px dashed rgba(255,255,255,.3);padding-top:16px;text-align:left}
   .clue .ans .xh{font-size:1em}
+  .alabel{font-size:.6em;letter-spacing:.09em;text-transform:uppercase;color:#c9d2ff;font-weight:600;margin-bottom:6px}
   .ctrl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
   .ctrl .spacer{flex:1}
   .judge{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px}
@@ -249,6 +250,14 @@ function pick(modKeys, tier, n, opts){
 function modLabel(k){ var m=MODS[k]; if(!m) return k; return m.name; }
 function flagQ(q){ if(flagged.indexOf(q.id)<0){ flagged.push(q.id); store.set('flagged', flagged); } toast('Flagged for review'); }
 function refHtml(q){ var x = q.kind==='basic' ? '' : q.extra; return x ? '<div class="ref">'+x+'</div>' : ''; }
+/* A cloze answer is a term, so it reads as gold text with its reference card beneath.
+   An open question's answer IS the table, so it needs the white card too — without this it
+   inherits the gold bold of .ans and the host cannot see what to read out. */
+function ansHtml(q){
+  return q.kind==='basic'
+    ? '<div class="alabel">Answer</div><div class="ref">'+q.ans+'</div>'
+    : q.ans + refHtml(q);
+}
 function sourceLine(q){ return '<span class="muted">'+esc(q.dom)+' · '+esc(modLabel(q.dom+'|'+q.mod))+' · '+(q.tier==='core'?'Core':'Depth')+'</span>'; }
 
 /* ============ routing ============ */
@@ -454,7 +463,7 @@ function jClue(){
   var cur=J.cur, q=cur.cell.q, val = cur.wager!=null ? cur.wager : cur.cell.value;
   var h='<div class="clue"><div class="meta">'+esc(modLabel(J.cats[cur.c]))+' · '+money(val)+(cur.wager!=null?' (Daily Double'+(cur.who!=null?', '+esc(J.players[cur.who].name):'')+')':'')+' · '+(q.tier==='core'?'Core':'Depth')+'</div>';
   h+='<div class="text">'+fmt(q.clue)+'</div>';
-  if(cur.revealed){ h+='<div class="ans">'+q.ans+refHtml(q)+'</div>'; }
+  if(cur.revealed){ h+='<div class="ans">'+ansHtml(q)+'</div>'; }
   h+='</div>';
   if(J.timer && !cur.revealed){ h+='<div class="timerbar"><i id="tbar"></i></div>'; }
   h+='<div class="ctrl">';
@@ -503,7 +512,7 @@ function jFinal(){
     h+='</div><div class="row" style="margin-top:12px"><button class="gold" onclick="jFinalShow()">Show the clue</button><button class="ghost" onclick="jFinalSetup()">Different category</button><button class="ghost" onclick="jBoard()">Back</button></div></div>';
   } else {
     h+='<div class="text">'+fmt(f.q.clue)+'</div>';
-    if(f.revealed) h+='<div class="ans">'+f.q.ans+refHtml(f.q)+'</div>';
+    if(f.revealed) h+='<div class="ans">'+ansHtml(f.q)+'</div>';
     h+='</div>';
     if(!f.revealed){ h+='<div class="ctrl"><button class="gold" onclick="J.final.revealed=true;jFinal()">Show answer</button></div>'; }
     else {
@@ -610,7 +619,7 @@ function mGame(){
   if(!M.revealed){ h+='<button class="gold" onclick="mReveal()" '+(M.locked==null?'disabled':'')+'>Final answer? Reveal <kbd>Enter</kbd></button>'; }
   else if(!M.over){ h+='<button class="gold" onclick="mNext()">Next question →</button>'; }
   h+='<button class="ghost" onclick="mSwap()">Swap question</button><button class="ghost" onclick="flagQ(M.ladder[M.qi].q)">Flag</button><span class="spacer"></span><span class="hint">'+sourceLine(q)+'</span></div>';
-  if(M.revealed){ h+='<div class="card" style="margin-top:12px"><b>Answer:</b> '+q.ans+(q.extra?'<div class="ref">'+q.extra+'</div>':'')+'</div>'; }
+  if(M.revealed){ h+='<div class="card" style="margin-top:12px"><b>Answer:</b> '+ansHtml(q)+'</div>'; }
   if(M.over){ h+=mOverHtml(); }
   h+='<div class="grid2" style="margin-top:14px"><div class="card"><h3>Ladder</h3><div class="ladder">';
   LADDER.forEach(function(v,i){ h+='<div class="'+(i===M.qi?'cur':i<M.qi?'done':'')+(MILESTONES[i]||i===14?' ms':'')+'"><span>'+(i+1)+'</span><span>'+money(v)+'</span></div>'; });
